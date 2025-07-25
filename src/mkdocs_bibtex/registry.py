@@ -11,6 +11,8 @@ import tempfile
 import re
 from pathlib import Path
 
+from collections import defaultdict
+
 
 class ReferenceRegistry(ABC):
     """
@@ -18,13 +20,26 @@ class ReferenceRegistry(ABC):
     """
 
     def __init__(self, bib_files: list[str], footnote_format: str = "{key}"):
-        refs = {}
+        refs = defaultdict(dict)
         log.info(f"Loading data from bib files: {bib_files}")
+
+        # Loading each bib file in a nested dictionary with bib file name without the last
+        # underscore part as key
+        # This allows for multiple bib files to be loaded and grouped by their base name
+        # so that in a multi repo environment, we can seperate bib files for each repo
+        # using bibfile name same as repo name
+        # e.g. repo-A.bib, repo-A_article.bib,  repo-A_book.bib for repo-A.git project
+
         for bibfile in bib_files:
             log.debug(f"Parsing bibtex file {bibfile}")
             bibdata = parse_file(bibfile)
-            refs.update(bibdata.entries)
-        self.bib_data = BibliographyData(entries=refs)
+            filename = Path(bibfile).stem.rsplit("_", 1)[0]  # Use the base name without the last underscore part
+            refs[filename].update(bibdata.entries)
+
+        self.bib_data = {}
+        for project, entries in refs.items():
+            self.bib_data[project] = BibliographyData(entries=entries)
+
         self.footnote_format = footnote_format
 
     @abstractmethod
@@ -172,7 +187,7 @@ class PandocRegistry(ReferenceRegistry):
             self._reference_cache.update(_references)
         return valid_references
 
-    @cached_property
+    @property
     def bib_data_bibtex(self) -> str:
         """Convert bibliography data to BibTeX format"""
         return self.bib_data.to_string("bibtex")

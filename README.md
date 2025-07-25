@@ -1,8 +1,15 @@
-# THIS IS NO LONGER MAINTAINED OR UPDATED
+# This repo is modified to work with mkdocs-multi-repo plugin
 
 [![testing](https://github.com/shyamd/mkdocs-bibtex/workflows/testing/badge.svg)](https://github.com/shyamd/mkdocs-bibtex/actions?query=workflow%3Atesting)
 [![codecov](https://codecov.io/gh/shyamd/mkdocs-bibtex/branch/main/graph/badge.svg)](https://codecov.io/gh/shyamd/mkdocs-bibtex)
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/shyamd/mkdocs-bibtex.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/shyamd/mkdocs-bibtex/context:python)
+
+# Compatibility rules
+1. To be able to work with multi-repo plugin, .bibtex for the default site must be named as `main.bib` and bib files must be named after each repository fetched by multi repo plugin. 
+2. .bib files for default site or external repos can be partitioned by adding definitive text following an undescore.
+i.e. `main.bib`, `main_articles.bib`, `main_publications.bib` (all three files will be parsed and registered as main.bib)
+3. When documentation (folder) structure is designed via multi-repo `section` and `section-path` parameters, make sure no repo name is used as folder name, slight variations acceptable but not exact same name.
+
 
 # mkdocs-bibtex
 

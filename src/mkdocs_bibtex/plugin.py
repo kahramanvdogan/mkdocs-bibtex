@@ -11,6 +11,7 @@ from mkdocs_bibtex.config import BibTexConfig
 from mkdocs_bibtex.registry import SimpleRegistry, PandocRegistry
 from mkdocs.exceptions import ConfigurationError
 
+from pybtex.database import BibliographyData
 
 from mkdocs_bibtex.utils import (
     tempfile_from_url,
@@ -95,6 +96,10 @@ class BibTexPlugin(BasePlugin[BibTexConfig]):
         Parses the markdown for each page, extracting the bibtex references
         If a local reference list is requested, this will render that list where requested
 
+        --> Multirepo extension
+        0. Filter the bibliography registry by the name of repository fetched by multirepo
+            checking if bib file name exists in the parent folder of the current page
+
         1. Finds all cite keys (may include multiple citation references)
         2. Convert all cite keys to citation quads:
             (full cite key,
@@ -105,6 +110,38 @@ class BibTexPlugin(BasePlugin[BibTexConfig]):
         4. Insert the bibliography into the markdown
         5. Insert the full bibliograph into the markdown
         """
+        # 0. self.bib_data is a dictionary with project name as key and BibliographyData as value
+        # hence at this point, we set bib_data collection and slice bib_data to the current project
+        file_path = Path(page.file.src_dir, page.file.src_path)
+
+        try:
+            folder_components = file_path.as_posix().split("docs/")[1].split("/")
+        except IndexError:
+            folder_components = file_path.as_posix().split("temp_dir/")[1].split("/")
+
+        folder_components_lower = [component.lower() for component in folder_components]
+
+        bib_file_names = list(self.registry.bib_data.keys())
+
+        if len(bib_file_names) == 0:
+            log.warning("No bib files found in registry. Using 'main' as default project name.")
+            project_name = "main"
+        else:
+            # Check if any of the bib_file_names are in the folder_components_lower
+            # If so, use that as the project name
+            # Otherwise, default to "main"
+            # This allows for multiple projects to be handled by the same plugin instance
+            # by using the bib file name as the project name
+
+            for bib_file_name in bib_file_names:
+                if bib_file_name in folder_components_lower:
+                    project_name = bib_file_name
+                    break
+                else:
+                    project_name = "main"
+
+        bib_data_collection = self.registry.bib_data or dict()
+        self.registry.bib_data = bib_data_collection.get(project_name, BibliographyData(entries={}))
 
         # 1. Find and validate all cite blocks in the markdown
         cite_blocks = CitationBlock.from_markdown(markdown)
@@ -173,5 +210,7 @@ class BibTexPlugin(BasePlugin[BibTexConfig]):
                 markdown = markdown.replace(str(ref), replacement)
 
         log.debug("Markdown: \n%s", markdown)
+
+        self.registry.bib_data = bib_data_collection
 
         return markdown
